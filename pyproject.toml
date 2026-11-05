@@ -6,14 +6,14 @@ build-backend = "hatchling.build"
 name = "JPRando"
 version = "0.0.1"
 authors = [
-    { name="Anguirel" email="anguirel86@gmail.com" },
+    { name="Anguirel", email="anguirel86@gmail.com" },
 ]
 description = "Randomizer for the 1993 SNES Jurassic Park"
 readme = "README.md"
-requires-python = ">= "3.11"
+requires-python = ">= 3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Ooperating System :: OS Independent",
+    "Operating System :: OS Independent",
 ]
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
@@ -21,4 +21,3 @@ license-files = ["LICEN[CS]E*"]
 [project.urls]
 Homepage = "https://github.com/anguirel86/jprando"
 Issues = "https://github.com/anguirel86/jprando/issues"
-

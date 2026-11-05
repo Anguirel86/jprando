@@ -1,6 +1,11 @@
-from ..rom.jprom import JPRom
-from .entrancetypes import COORD_IDX_TABLE, ENTRANCE_DATA, JPRegion, OWEntrance
-from .jpmap import Connectors, ConnectorType, MapData
+from jprando.jpmap.entrancetypes import (
+    COORD_IDX_TABLE,
+    ENTRANCE_DATA,
+    JPRegion,
+    OWEntrance,
+)
+from jprando.jpmap.jpmap import Connectors, ConnectorType, MapData
+from jprando.rom.jprom import JPRom
 
 
 def apply_entrance_rando(rom: JPRom, map_data: MapData):

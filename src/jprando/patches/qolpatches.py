@@ -1,7 +1,7 @@
-from ..asm import assemble
-from ..asm import instructions as inst
-from ..rom import memory as mem
-from ..rom.jprom import JPRom
+from jprando.asm import assemble
+from jprando.asm import instructions as inst
+from jprando.rom import memory as mem
+from jprando.rom.jprom import JPRom
 
 
 def patch_health_regen(rom: JPRom):

@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 
-from .jpmap import entrancerando, jpmap
-from .patches import basepatch, qolpatches
-from .rom import jprom
+from jprando.jpmap import entrancerando, jpmap
+from jprando.patches import basepatch, qolpatches
+from jprando.rom import jprom
 
 
 @dataclass

@@ -1,13 +1,11 @@
 """
 Module for assembling instructions into binary
 """
-from dataclasses import dataclass
 import typing
+from dataclasses import dataclass
 
-from . import instructions as inst
-from .instructions import _BranchInstruction, _NormalInstruction
-
-# import asm.byteops
+from jprando.asm import instructions as inst
+from jprando.asm.instructions import _BranchInstruction, _NormalInstruction
 
 Instruction = _BranchInstruction | _NormalInstruction
 

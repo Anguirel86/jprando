@@ -4,7 +4,15 @@ from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import TypeAlias
 
-from .entrancetypes import Battery, Event, IDCard, Item, JPRegion, MapId, OWEntrance
+from jprando.jpmap.entrancetypes import (
+    Battery,
+    Event,
+    IDCard,
+    Item,
+    JPRegion,
+    MapId,
+    OWEntrance,
+)
 
 Reward: TypeAlias = Event | IDCard | Battery | Item
 Rules: TypeAlias = list[list[Reward]] | None
@@ -703,7 +711,7 @@ def _visit_all(map_data: MapData, start_inven: Rewards) -> bool:
         # Check the reachable but locked connectors again
         for entrance in con_reachable:
             if _can_access(entrance.rules, inven) and not_seen(entrance.to_node):
-                queue.append(entrance.to_node)  # noqa: PERF401
+                queue.append(entrance.to_node)
 
         # Add new reachable nodes from the current node
         for entrance in curr.exits:
@@ -727,9 +735,9 @@ def _print_map(map_data: MapData):
     Debug function to print the current connections
     """
     for node in map_data.nodes.values():
-        print(f"{node.name}")  # noqa: T201
+        print(f"{node.name}")
         for conn in node.exits:
-            print(f"  {conn.name} - {conn.from_node.name} -> {conn.to_node.name}")  # noqa: T201
+            print(f"  {conn.name} - {conn.from_node.name} -> {conn.to_node.name}")
 
 def _shuffle_map(map_data: MapData):
     """
@@ -802,7 +810,7 @@ def main():
         _shuffle_map(map_data)
         valid = _visit_all(map_data, inventory)
 
-    print(f"Found valid map in {count} iterations")  # noqa: T201
+    print(f"Found valid map in {count} iterations")
     _print_map(map_data)
 
 if __name__ == "__main__":

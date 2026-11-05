@@ -6,10 +6,10 @@ The content of this file and naming conventions are originally from:
   http://www.6502.org/tutorials/65c816opcodes.html
 """
 
-from dataclasses import dataclass
 import enum
 import inspect
 import sys
+from dataclasses import dataclass
 from typing import ClassVar, Optional, Protocol, Type
 
 
