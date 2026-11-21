@@ -36,6 +36,15 @@ class FreeSpaceManager:
         #       try to combine them (respecting bank boundaries)
         self.free_blocks.append(FSBlock(start, end))
 
+    def is_free(self, addr: int, size: int) -> bool:
+        """
+        Check if the the requested block is free.
+        """
+        for block in self.free_blocks:
+            if block.start <= addr and addr + size <= block.end:
+                return True
+        return False
+
     def reserve(self, size: int) -> int:
         """
         Reserve the requested number of bytes anywhere in the ROM and
@@ -114,12 +123,12 @@ class JPRom:
         """
         Set the initial free space for the expanded ROM.
         """
-        # The ROM was expanded from 2MB to 3MB, this leave 20 banks of 32k bytes
+        # The ROM was expanded from 2MB to 3MB, this leaves 0x20 (32) banks of 32k bytes
         # as newly minted free space.
         start = 0x20_0000
         bank_size = 0x8000
         for addr in range(start, self._ROM_SIZE, bank_size):
-            self.free_space_manager.mark_free(addr, addr + bank_size - 1)
+            self.free_space_manager.mark_free(addr, addr + bank_size)
 
     @staticmethod
     def to_cpu_addr(rom_addr: int) -> int:

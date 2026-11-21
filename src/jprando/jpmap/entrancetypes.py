@@ -7,7 +7,7 @@ class IDCard(StrEnum):
     ELLIE_SATTLER = auto()
     ROBERT_MULDOON = auto()
     ALAN_GRANT = auto()
-    DONALD_GENARRO = auto()
+    DONALD_GENNARO = auto()
     RAY_ARNOLD = auto()
     DENNIS_NEDRY = auto()
     HENRY_WU = auto()
@@ -39,6 +39,68 @@ class Event(StrEnum):
     COLLECT_NERVE_GAS = auto()
     DESTROY_RAPTOR_NEST = auto()
     CONTACT_MAINLAND = auto()
+
+class Location(StrEnum):
+    """
+    Enum type to define all valid in-game item locations.
+    """
+    # OW South region (Starting region, behind gate 3)
+    SOUTH_NUBLAR_MOUNTAIN_EGG = auto()
+    SOUTH_NUBLAR_EGG = auto()
+    HELIPAD_EGG = auto()
+
+    # OW Raptor Nest region
+    NORTH_RAPTOR_NEST_EGG = auto()
+    EAST_RAPTOR_NEST_EGG = auto()
+
+    # OW Northwest region
+    REAR_VISITOR_CENTER_EGG = auto()
+    NORTH_UTILITY_SHED_EGG = auto()
+
+    # Visitor Center Roof
+    VISITOR_CENTER_ROOF_EGG = auto()
+    JOHN_HAMMOND_ID_CARD = auto()
+
+    # OW Central region
+    # All remaining overworld locations, not behind gates
+    NORTHWEST_TRICERATOPS_EGG = auto()
+    NORTH_MOUNTAIN_EGG = auto()
+    JUNGLE_TRICERATOPS_EGG = auto()
+    JUNGLE_TRAPS_EGG = auto()
+    JUNGLE_DEAD_END_EGG = auto()
+    PARK_GATE_EGG = auto()
+    EAST_CANAL_EGG = auto()
+    EAST_MOUNTAIN_EGG = auto()
+    EAST_HARBOR_EGG = auto()
+    SHIP_ROOF_EGG = auto()
+
+    # Interior building locations
+    # Nublar Utility Shed
+    NUBLAR_UTILITY_SHED_BATTERY = auto()
+    DONALD_GENNARO_ID_CARD = auto()
+
+    # Beach Utility shed
+    BEACH_UTILITY_SHED_BATTERY = auto()
+    DENNIS_NEDRY_ID_CARD = auto()
+    RAY_ARNOLD_ID_CARD = auto()
+
+    # North Utility Shed
+    NORTH_UTILIYT_SHED_BATTERY = auto()
+    # TOOD: Add nerve gas pickup when implemented
+
+    # Visitor Center
+    ALAN_GRANT_ID_CARD = auto()
+    VISITOR_CENTER_BATTERY = auto()
+
+    # Raptor Pen
+    IAN_MALCOLM_ID_CARD = auto()
+    RAPTOR_PEN_BATTERY = auto()
+    ROBERT_MULDOON_ID_CARD = auto()
+
+    # Ship
+    SHIP_BATTERY = auto()
+    HENRY_WU_ID_CARD = auto()
+    ELLIE_SATLER_ID_CARD = auto()
 
 class JPRegion(StrEnum):
     """
@@ -152,7 +214,7 @@ class MapId(IntEnum):
     NUBLAR_UTILITY_SHED_ENTRY_LEVEL = 0x06
     SHIP_ENTRY_LEVEL = 0x07
     RAPTOR_NEST_NORTH_ENTRANCE = 0x08
-    RAPTOR_NEST_SOUTH_ENTRANCE = 0x09
+    RAPTOR_NEST_EAST_ENTRANCE = 0x09
     SECRET_LEVEL = 0x0A
     RAPTOR_PEN_GROUND_FLOOR = 0x0B
     RAPTOR_PEN_SUB_LEVEL_1 = 0x0C
@@ -179,7 +241,7 @@ class OWEntrance(StrEnum):
     NUBLAR_UTILITY_SHED_ENTRANCE = auto()
     NORTH_UTILITY_SHED_ENTRANCE = auto()
     RAPTOR_NEST_NORTH_ENTRANCE = auto()
-    RAPTOR_NEST_SOUTH_ENTRANCE = auto()
+    RAPTOR_NEST_EAST_ENTRANCE = auto()
 
     def __repr__(self):
         return repr(self.value).replace("_", " ").title()
@@ -223,7 +285,7 @@ COORD_IDX_TABLE: dict[MapId, int] = {
     MapId.SHIP_ENTRY_LEVEL: 6,
     MapId.RAPTOR_NEST_NORTH_ENTRANCE: 7,
     # MapId.RAPTOR_NEST_NORTH_ENTRANCE: 8, # Alternate data
-    MapId.RAPTOR_NEST_SOUTH_ENTRANCE: 9,
+    MapId.RAPTOR_NEST_EAST_ENTRANCE: 9,
     # MapId.RAPTOR_NEST_SOUTH_ENTRANCE: 10, # Alternate data
     MapId.SECRET_LEVEL: 11
 }
@@ -250,8 +312,8 @@ ENTRANCE_DATA: dict[OWEntrance, DoorData] = {
         MapId.SHIP_ENTRY_LEVEL, 6, ExitCoords(0x0ED0, 0x0B70, 0x0800)),
     OWEntrance.RAPTOR_NEST_NORTH_ENTRANCE: DoorData(
         MapId.RAPTOR_NEST_NORTH_ENTRANCE, 7, ExitCoords(0x0BB0, 0x0070, 0x0800)),
-    OWEntrance.RAPTOR_NEST_SOUTH_ENTRANCE: DoorData(
-        MapId.RAPTOR_NEST_SOUTH_ENTRANCE, 9, ExitCoords(0x0F00, 0x05C0, 0x0800)),
+    OWEntrance.RAPTOR_NEST_EAST_ENTRANCE: DoorData(
+        MapId.RAPTOR_NEST_EAST_ENTRANCE, 9, ExitCoords(0x0F00, 0x05C0, 0x0800)),
     OWEntrance.SECRET_AREA_ENTRANCE: DoorData(
         MapId.SECRET_LEVEL, 11, ExitCoords(0x0B74, 0x0B00, 0x4000)),
 }

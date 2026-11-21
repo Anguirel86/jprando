@@ -10,15 +10,19 @@ from jprando.jpmap.entrancetypes import (
     IDCard,
     Item,
     JPRegion,
+    Location,
     MapId,
     OWEntrance,
 )
 
 Reward: TypeAlias = Event | IDCard | Battery | Item
+Events: TypeAlias = list[Event] | None
 Rules: TypeAlias = list[list[Reward]] | None
 Rewards: TypeAlias = list[Reward] | None
 Connectors: TypeAlias = list["Connector"]
 MapNodes: TypeAlias = dict[JPRegion, "MapNode"]
+Locations: TypeAlias = list[Location] | None
+TreasureMap: TypeAlias = dict[Location, Reward]
 
 _NULL_ACCESS_RULE = None
 _REVERSIBLE = True
@@ -30,7 +34,8 @@ class MapNode:
     Represents a logical region of the JP map.
     """
     name: JPRegion
-    rewards: Rewards
+    events: Events
+    locations: Locations
     overworld: bool = False
     map_id: MapId | None = None
     exits: Connectors = field(default_factory=list["Connector"])
@@ -92,6 +97,7 @@ class MapData:
     start: MapNode
     nodes: MapNodes
     connectors: Connectors
+    treasure_map: TreasureMap
 
 def get_default_map() -> MapData:
     """
@@ -99,8 +105,9 @@ def get_default_map() -> MapData:
     """
     nodes = _get_default_map_nodes()
     connectors = _get_default_connectors(nodes)
+    treasure_map = _get_default_treasure_map()
     _connect_nodes(connectors)
-    return MapData(nodes[JPRegion.OW_SOUTH_REGION], nodes, connectors)
+    return MapData(nodes[JPRegion.OW_SOUTH_REGION], nodes, connectors, treasure_map)
 
 def _get_default_map_nodes() -> MapNodes:
     """
@@ -112,12 +119,56 @@ def _get_default_map_nodes() -> MapNodes:
         #    - Always available
         #    - South region is behind gate 3, which starts unlocked
         #    - South region is the starting region
-        JPRegion.OW_SOUTH_REGION: MapNode(JPRegion.OW_SOUTH_REGION, None, True),
-        JPRegion.OW_CENTRAL_REGION: MapNode(JPRegion.OW_CENTRAL_REGION, None, True),
-        JPRegion.OW_VISITOR_CENTER_ROOF: MapNode(JPRegion.OW_VISITOR_CENTER_ROOF, None, True),
+        JPRegion.OW_SOUTH_REGION: MapNode(
+            JPRegion.OW_SOUTH_REGION,
+            None,
+            [
+                Location.SOUTH_NUBLAR_EGG,
+                Location.SOUTH_NUBLAR_MOUNTAIN_EGG,
+                Location.HELIPAD_EGG
+            ],
+            True),
+        JPRegion.OW_CENTRAL_REGION: MapNode(
+            JPRegion.OW_CENTRAL_REGION,
+            None,
+            [
+                Location.NORTHWEST_TRICERATOPS_EGG,
+                Location.NORTH_MOUNTAIN_EGG,
+                Location.JUNGLE_TRICERATOPS_EGG,
+                Location.JUNGLE_TRAPS_EGG,
+                Location.JUNGLE_DEAD_END_EGG,
+                Location.PARK_GATE_EGG,
+                Location.EAST_CANAL_EGG,
+                Location.EAST_MOUNTAIN_EGG,
+                Location.EAST_HARBOR_EGG,
+                Location.SHIP_ROOF_EGG
+            ],
+            True),
+        JPRegion.OW_VISITOR_CENTER_ROOF: MapNode(
+            JPRegion.OW_VISITOR_CENTER_ROOF,
+            None,
+            [
+                Location.VISITOR_CENTER_ROOF_EGG,
+                Location.JOHN_HAMMOND_ID_CARD
+            ],
+            True),
         #   - Gates start locked, can be opened after rebooting park systems
-        JPRegion.OW_NORTHWEST_REGION: MapNode(JPRegion.OW_NORTHWEST_REGION, None, True), # Gate 1
-        JPRegion.OW_RAPTOR_NEST_REGION: MapNode(JPRegion.OW_RAPTOR_NEST_REGION, None, True), # Gate 2
+        JPRegion.OW_NORTHWEST_REGION: MapNode(
+            JPRegion.OW_NORTHWEST_REGION,
+            None,
+            [
+                Location.REAR_VISITOR_CENTER_EGG,
+                Location.NORTH_UTILITY_SHED_EGG
+            ],
+            True), # Gate 1
+        JPRegion.OW_RAPTOR_NEST_REGION: MapNode(
+            JPRegion.OW_RAPTOR_NEST_REGION,
+            None,
+            [
+                Location.NORTH_RAPTOR_NEST_EGG,
+                Location.EAST_RAPTOR_NEST_EGG
+            ],
+            True), # Gate 2
 
         # Nublar Utility Shed
         #   - Entry and B1 are always open
@@ -125,41 +176,55 @@ def _get_default_map_nodes() -> MapNodes:
         JPRegion.NUBLAR_UTILITY_SHED_ENTRY: MapNode(
             JPRegion.NUBLAR_UTILITY_SHED_ENTRY,
             [Event.TURN_ON_GENERATOR],
+            [Location.NUBLAR_UTILITY_SHED_BATTERY],
             False,
             MapId.NUBLAR_UTILITY_SHED_ENTRY_LEVEL),
-        JPRegion.NUBLAR_UTILITY_SHED_B1: MapNode(JPRegion.NUBLAR_UTILITY_SHED_B1, None),
-        JPRegion.NUBLAR_UTILITY_SHED_B1_LOCKED_ROOM: MapNode(JPRegion.NUBLAR_UTILITY_SHED_B1_LOCKED_ROOM, None),
+        JPRegion.NUBLAR_UTILITY_SHED_B1: MapNode(JPRegion.NUBLAR_UTILITY_SHED_B1, None, None),
+        JPRegion.NUBLAR_UTILITY_SHED_B1_LOCKED_ROOM: MapNode(
+            JPRegion.NUBLAR_UTILITY_SHED_B1_LOCKED_ROOM, None, [Location.DONALD_GENNARO_ID_CARD]),
 
         # Beach Utility Shed
         #   - Entry level always available
         JPRegion.BEACH_UTILITY_SHED_ENTRY: MapNode(
-            JPRegion.BEACH_UTILITY_SHED_ENTRY, None, False, MapId.BEACH_UTILITY_SHED_ENTRY_LEVEL),
+            JPRegion.BEACH_UTILITY_SHED_ENTRY,
+            None,
+            [Location.DENNIS_NEDRY_ID_CARD],
+            False,
+            MapId.BEACH_UTILITY_SHED_ENTRY_LEVEL),
         #   - Elevator locked by Gennaro's ID card
-        JPRegion.BEACH_UTILITY_SHED_B1: MapNode(JPRegion.BEACH_UTILITY_SHED_B1, None),
+        JPRegion.BEACH_UTILITY_SHED_B1: MapNode(
+            JPRegion.BEACH_UTILITY_SHED_B1, None, [Location.BEACH_UTILITY_SHED_BATTERY]),
         #   - Dark room needs the battery (vanilla Ray Arnold ID card location)
-        JPRegion.BEACH_UTILITY_SHED_B1_DARK_ROOM: MapNode(JPRegion.BEACH_UTILITY_SHED_B1_DARK_ROOM, None),
+        JPRegion.BEACH_UTILITY_SHED_B1_DARK_ROOM: MapNode(
+            JPRegion.BEACH_UTILITY_SHED_B1_DARK_ROOM, None, [Location.RAY_ARNOLD_ID_CARD]),
 
         # Visitor Center Floor 1
         #   - Main entry level is always open
         #   - Dark room needs the battery (vanilla Grant ID card)
         #   - Staff elevator room needs Hammond's ID card (leads to sub level)
         JPRegion.VISITOR_CENTER_ENTRY: MapNode(
-            JPRegion.VISITOR_CENTER_ENTRY, None, False, MapId.VISITOR_CENTER_ENTRY_LEVEL),
-        JPRegion.VISITOR_CENTER_ENTRY_DARK_ROOM: MapNode(JPRegion.VISITOR_CENTER_ENTRY_DARK_ROOM, None),
-        JPRegion.VISITOR_CENTER_ENTRY_STAFF_ELEVATOR: MapNode(JPRegion.VISITOR_CENTER_ENTRY_STAFF_ELEVATOR, None),
+            JPRegion.VISITOR_CENTER_ENTRY, None, None, False, MapId.VISITOR_CENTER_ENTRY_LEVEL),
+        JPRegion.VISITOR_CENTER_ENTRY_DARK_ROOM: MapNode(
+            JPRegion.VISITOR_CENTER_ENTRY_DARK_ROOM, None, [Location.ALAN_GRANT_ID_CARD]),
+        JPRegion.VISITOR_CENTER_ENTRY_STAFF_ELEVATOR: MapNode(
+            JPRegion.VISITOR_CENTER_ENTRY_STAFF_ELEVATOR, None, None),
 
         # Visitor Center floor 2
         #   - Main floor 2 (incubator room) is always open
         #   - Main computer area needs Nedry's ID card
         #   - Lab needs Nedry's card and Dr. Wu's card
-        JPRegion.VISITOR_CENTER_F2: MapNode(JPRegion.VISITOR_CENTER_F2, None),
+        JPRegion.VISITOR_CENTER_F2: MapNode(JPRegion.VISITOR_CENTER_F2, None, None),
         JPRegion.VISITOR_CENTER_F2_MAIN_COMPUTER: MapNode(
-            JPRegion.VISITOR_CENTER_F2_MAIN_COMPUTER, [Event.REBOOT_PARK_SYSTEMS, Event.ACTIVATE_MOTION_SENSORS]),
-        JPRegion.VISITOR_CENTER_F2_LAB: MapNode(JPRegion.VISITOR_CENTER_F2_LAB, [Event.SECURITY_LEVEL_1]),
+            JPRegion.VISITOR_CENTER_F2_MAIN_COMPUTER,
+            [Event.REBOOT_PARK_SYSTEMS, Event.ACTIVATE_MOTION_SENSORS],
+            None
+        ),
+        JPRegion.VISITOR_CENTER_F2_LAB: MapNode(JPRegion.VISITOR_CENTER_F2_LAB, [Event.SECURITY_LEVEL_1], None),
 
         # Visitor Center Floor 3
         #   - Always available, leads to roof
-        JPRegion.VISITOR_CENTER_F3: MapNode(JPRegion.VISITOR_CENTER_F3, None, False, MapId.VISITOR_CENTER_ROOF_LEVEL),
+        JPRegion.VISITOR_CENTER_F3: MapNode(
+            JPRegion.VISITOR_CENTER_F3, None, None, False, MapId.VISITOR_CENTER_ROOF_LEVEL),
 
         # Visitor Center Sub Level
         #   - Accessible with hammond's ID card from the VC entry level
@@ -170,62 +235,69 @@ def _get_default_map_nodes() -> MapNodes:
         #
         #   Need Grant's card to get into the room with the elevator in the
         #   raptor pen, but not to get out.
-        #   TODO: Confirm this
-        JPRegion.VISITOR_CENTER_B1: MapNode(JPRegion.VISITOR_CENTER_B1, None),
+        JPRegion.VISITOR_CENTER_B1: MapNode(
+            JPRegion.VISITOR_CENTER_B1, None, [Location.VISITOR_CENTER_BATTERY]),
 
         # Raptor Pen Entry Level (Floor 3)
         #   - Entry level is always available
-        JPRegion.RAPTOR_PEN_ENTRY: MapNode(JPRegion.RAPTOR_PEN_ENTRY, None, False, MapId.RAPTOR_PEN_ENTRY_LEVEL),
+        JPRegion.RAPTOR_PEN_ENTRY: MapNode(
+            JPRegion.RAPTOR_PEN_ENTRY, None, None, False, MapId.RAPTOR_PEN_ENTRY_LEVEL),
 
         # Raptor Pen Floor 2
         #   - Always available
-        JPRegion.RAPTOR_PEN_F2: MapNode(JPRegion.RAPTOR_PEN_F2, None),
+        JPRegion.RAPTOR_PEN_F2: MapNode(JPRegion.RAPTOR_PEN_F2, None, None),
         #   - Need the raptor pen battery for the dark room (vanilla Malcolm ID card)
-        JPRegion.RAPTOR_PEN_F2_DARK_ROOM: MapNode(JPRegion.RAPTOR_PEN_F2_DARK_ROOM, None),
+        JPRegion.RAPTOR_PEN_F2_DARK_ROOM: MapNode(
+            JPRegion.RAPTOR_PEN_F2_DARK_ROOM, None, [Location.IAN_MALCOLM_ID_CARD]),
 
         # Raptor Pen Floor 1
         #   - Always available
-        JPRegion.RAPTOR_PEN_F1: MapNode(JPRegion.RAPTOR_PEN_F1, None),
+        JPRegion.RAPTOR_PEN_F1: MapNode(JPRegion.RAPTOR_PEN_F1, None, [Location.RAPTOR_PEN_BATTERY]),
         #   - Need security level 1 (computer here can contact the ship)
-        JPRegion.RAPTOR_PEN_F1_COMMS_ROOM: MapNode(JPRegion.RAPTOR_PEN_F1_COMMS_ROOM, [Event.CONTACT_SHIP]),
+        JPRegion.RAPTOR_PEN_F1_COMMS_ROOM: MapNode(
+            JPRegion.RAPTOR_PEN_F1_COMMS_ROOM, [Event.CONTACT_SHIP], None),
         #   - Need raptor pen battery for the elevator in this room
-        JPRegion.RAPTOR_PEN_F1_DARK_ELEVATOR: MapNode(JPRegion.RAPTOR_PEN_F1_DARK_ELEVATOR, None),
+        JPRegion.RAPTOR_PEN_F1_DARK_ELEVATOR: MapNode(JPRegion.RAPTOR_PEN_F1_DARK_ELEVATOR, None, None),
 
         # Raptor Pen B1
         #   - Nothing locked on this floor, but you need the battery
         #     if trying to progress upward since the elevator is
         #     in a dark room on F1
-        JPRegion.RAPTOR_PEN_B1: MapNode(JPRegion.RAPTOR_PEN_B1, None),
+        JPRegion.RAPTOR_PEN_B1: MapNode(JPRegion.RAPTOR_PEN_B1, None, [Location.ROBERT_MULDOON_ID_CARD]),
 
         # Raptor Pen B2
         #   - Main area doesn't have any restrictions
-        JPRegion.RAPTOR_PEN_B2: MapNode(JPRegion.RAPTOR_PEN_B2, None),
+        JPRegion.RAPTOR_PEN_B2: MapNode(JPRegion.RAPTOR_PEN_B2, None, None),
         #   - Block raptor pen door event
         #   - Need Grant's card to get in  from raptor pen side
         #   - Need Sattler's card to get in from the visitor center
         JPRegion.RAPTOR_PEN_B2_RAPTOR_ENTRY: MapNode(
-            JPRegion.RAPTOR_PEN_B2_RAPTOR_ENTRY, [Event.BLOCK_RAPTOR_PEN_DOOR]),
+            JPRegion.RAPTOR_PEN_B2_RAPTOR_ENTRY, [Event.BLOCK_RAPTOR_PEN_DOOR], None),
 
         # Raptor Nest
         #   - Two overworld entrances lead to the raptor nest
         #   - Entrances are in OW_RAPTOR_NEST_REGION
         #   - This is one of the only connector zones
-        JPRegion.RAPTOR_NEST_NORTH: MapNode(JPRegion.RAPTOR_NEST_NORTH, None, False, MapId.RAPTOR_NEST_NORTH_ENTRANCE),
-        JPRegion.RAPTOR_NEST_SOUTH: MapNode(JPRegion.RAPTOR_NEST_SOUTH, None, False, MapId.RAPTOR_NEST_SOUTH_ENTRANCE),
+        JPRegion.RAPTOR_NEST_NORTH: MapNode(
+            JPRegion.RAPTOR_NEST_NORTH, None, None, False, MapId.RAPTOR_NEST_NORTH_ENTRANCE),
+        JPRegion.RAPTOR_NEST_SOUTH: MapNode(
+            JPRegion.RAPTOR_NEST_SOUTH, None, None, False, MapId.RAPTOR_NEST_EAST_ENTRANCE),
         #   - Physically accessible as soon as the nest is open
         #     but logically requires nerve gas to be collected and
         #     the ship to be cleared
-        JPRegion.RAPTOR_NEST_NERVE_GAS: MapNode(JPRegion.RAPTOR_NEST_NERVE_GAS, [Event.DESTROY_RAPTOR_NEST]),
+        JPRegion.RAPTOR_NEST_NERVE_GAS: MapNode(
+            JPRegion.RAPTOR_NEST_NERVE_GAS, [Event.DESTROY_RAPTOR_NEST], None),
 
         # Ship
         #   - Main level is always open
-        JPRegion.SHIP_ENTRY: MapNode(JPRegion.SHIP_ENTRY, None, False, MapId.SHIP_ENTRY_LEVEL),
+        JPRegion.SHIP_ENTRY: MapNode(
+            JPRegion.SHIP_ENTRY, None, [Location.SHIP_BATTERY], False, MapId.SHIP_ENTRY_LEVEL),
 
         # Ship Sublevel 1
         #   - Main area is always open
         #   - Dark room requires the ship battery
-        JPRegion.SHIP_B1: MapNode(JPRegion.SHIP_B1, None),
-        JPRegion.SHIP_B1_DARK_ROOM: MapNode(JPRegion.SHIP_B1_DARK_ROOM, None),
+        JPRegion.SHIP_B1: MapNode(JPRegion.SHIP_B1, None, None),
+        JPRegion.SHIP_B1_DARK_ROOM: MapNode(JPRegion.SHIP_B1_DARK_ROOM, None, [Location.HENRY_WU_ID_CARD]),
 
         # Ship Sublevel 2
         #   - Main area is open and includes the Security Level 2 computer
@@ -233,18 +305,18 @@ def _get_default_map_nodes() -> MapNodes:
         #   - The back half requires Ray Arnold's ID card
         #   - The elevetor dark room also requires the ship battery
         #   - Using the elevator also requires security level 2
-        JPRegion.SHIP_B2: MapNode(JPRegion.SHIP_B2, None),
-        JPRegion.SHIP_B2_COMPUTER: MapNode(JPRegion.SHIP_B2_COMPUTER, [Event.SECURITY_LEVEL_2]),
-        JPRegion.SHIP_B2_BACK: MapNode(JPRegion.SHIP_B2_BACK, None),
-        JPRegion.SHIP_B2_ELEVATOR_ROOM: MapNode(JPRegion.SHIP_B2_ELEVATOR_ROOM, None),
+        JPRegion.SHIP_B2: MapNode(JPRegion.SHIP_B2, None, None),
+        JPRegion.SHIP_B2_COMPUTER: MapNode(JPRegion.SHIP_B2_COMPUTER, [Event.SECURITY_LEVEL_2], None),
+        JPRegion.SHIP_B2_BACK: MapNode(JPRegion.SHIP_B2_BACK, None, None),
+        JPRegion.SHIP_B2_ELEVATOR_ROOM: MapNode(JPRegion.SHIP_B2_ELEVATOR_ROOM, None, None),
 
         # Ship Sublevel 3
         #   - sublevel 3 is the crew quarters.  Most of this are is open
         #   - Vanilla Sattler's ID card is in this region
         #   - The comms room requires the battery and the computer will not
         #     be available until the raptor nest is destroyed.
-        JPRegion.SHIP_B3: MapNode(JPRegion.SHIP_B3, None),
-        JPRegion.SHIP_B3_COMMS_ROOM: MapNode(JPRegion.SHIP_B3_COMMS_ROOM, [Event.CONTACT_MAINLAND]),
+        JPRegion.SHIP_B3: MapNode(JPRegion.SHIP_B3, None, [Location.ELLIE_SATLER_ID_CARD]),
+        JPRegion.SHIP_B3_COMMS_ROOM: MapNode(JPRegion.SHIP_B3_COMMS_ROOM, [Event.CONTACT_MAINLAND], None),
 
         # Ship Sublevel 4
         #   - Ship's cargo hold
@@ -253,22 +325,26 @@ def _get_default_map_nodes() -> MapNodes:
         #     the whole ship is clearable
         #     TODO: This may not hold true if/when elevator shuffle is added
         #           Clearing the ship in that case will need some additional tracking.
-        JPRegion.SHIP_B4: MapNode(JPRegion.SHIP_B4, None),
-        JPRegion.SHIP_B4_DARK_ROOM: MapNode(JPRegion.SHIP_B4_DARK_ROOM, [Event.CLEAR_SHIP]),
+        JPRegion.SHIP_B4: MapNode(JPRegion.SHIP_B4, None, None),
+        JPRegion.SHIP_B4_DARK_ROOM: MapNode(JPRegion.SHIP_B4_DARK_ROOM, [Event.CLEAR_SHIP], None),
 
         # North Utility Shed
         #   - The shed in the northwest area behind the locked gate (gate 1)
         #   - The elevator to B1 has no restrictions, but the nerve gas storage
         #     is locked my Muldoon's ID card
         JPRegion.NORTH_UTILITY_SHED_ENTRY: MapNode(
-            JPRegion.NORTH_UTILITY_SHED_ENTRY, None, False, MapId.NORTH_UTILITY_SHED_ENTRY_LEVEL),
-        JPRegion.NORTH_UTILITY_SHED_B1: MapNode(JPRegion.NORTH_UTILITY_SHED_B1, None),
+            JPRegion.NORTH_UTILITY_SHED_ENTRY,
+            None,
+            [Location.NORTH_UTILIYT_SHED_BATTERY],
+            False,
+            MapId.NORTH_UTILITY_SHED_ENTRY_LEVEL),
+        JPRegion.NORTH_UTILITY_SHED_B1: MapNode(JPRegion.NORTH_UTILITY_SHED_B1, None, None),
         JPRegion.NORTH_UTILITY_SHED_NERVE_GAS: MapNode(
-            JPRegion.NORTH_UTILITY_SHED_NERVE_GAS, [Event.COLLECT_NERVE_GAS]),
+            JPRegion.NORTH_UTILITY_SHED_NERVE_GAS, [Event.COLLECT_NERVE_GAS], None),
 
         # Secret Area
         #   - Secret area is a hidden entrance in the east mountains
-        JPRegion.SECRET_AREA: MapNode(JPRegion.SECRET_AREA, None, False, MapId.SECRET_LEVEL)
+        JPRegion.SECRET_AREA: MapNode(JPRegion.SECRET_AREA, None, None, False, MapId.SECRET_LEVEL)
     }
     return nodes
 
@@ -358,7 +434,7 @@ def _get_default_connectors(nodes: MapNodes) -> Connectors:
             nodes[JPRegion.RAPTOR_NEST_NORTH],
             _REVERSIBLE,
             _NULL_ACCESS_RULE),
-        Connector(OWEntrance.RAPTOR_NEST_SOUTH_ENTRANCE,
+        Connector(OWEntrance.RAPTOR_NEST_EAST_ENTRANCE,
             ConnectorType.BUILDING,
             nodes[JPRegion.OW_RAPTOR_NEST_REGION],
             nodes[JPRegion.RAPTOR_NEST_SOUTH],
@@ -389,7 +465,7 @@ def _get_default_connectors(nodes: MapNodes) -> Connectors:
             nodes[JPRegion.BEACH_UTILITY_SHED_ENTRY],
             nodes[JPRegion.BEACH_UTILITY_SHED_B1],
             _REVERSIBLE,
-            [[IDCard.DONALD_GENARRO]]),
+            [[IDCard.DONALD_GENNARO]]),
         Connector("Beach Utility Shed B1 Dark Room",
             ConnectorType.STATIC,
             nodes[JPRegion.BEACH_UTILITY_SHED_B1],
@@ -647,6 +723,53 @@ def _get_default_connectors(nodes: MapNodes) -> Connectors:
 
     return connectors
 
+def _get_default_treasure_map() -> TreasureMap:
+    """
+    Get a default dictionary containing all of the treasure locations
+    and their associated vanilla reward value.
+    """
+    treasure_map: TreasureMap = {
+        # Eggs
+        Location.SOUTH_NUBLAR_MOUNTAIN_EGG: Item.EGG,
+        Location.SOUTH_NUBLAR_EGG: Item.EGG,
+        Location.HELIPAD_EGG: Item.EGG,
+        Location.NORTH_RAPTOR_NEST_EGG: Item.EGG,
+        Location.EAST_RAPTOR_NEST_EGG: Item.EGG,
+        Location.REAR_VISITOR_CENTER_EGG: Item.EGG,
+        Location.NORTH_UTILITY_SHED_EGG: Item.EGG,
+        Location.VISITOR_CENTER_ROOF_EGG: Item.EGG,
+        Location.NORTHWEST_TRICERATOPS_EGG: Item.EGG,
+        Location.NORTH_MOUNTAIN_EGG: Item.EGG,
+        Location.JUNGLE_TRICERATOPS_EGG: Item.EGG,
+        Location.JUNGLE_TRAPS_EGG: Item.EGG,
+        Location.JUNGLE_DEAD_END_EGG: Item.EGG,
+        Location.PARK_GATE_EGG: Item.EGG,
+        Location.EAST_CANAL_EGG: Item.EGG,
+        Location.EAST_MOUNTAIN_EGG: Item.EGG,
+        Location.EAST_HARBOR_EGG: Item.EGG,
+        Location.SHIP_ROOF_EGG: Item.EGG,
+
+        # ID Cards
+        Location.JOHN_HAMMOND_ID_CARD: IDCard.JOHN_HAMMOND,
+        Location.DONALD_GENNARO_ID_CARD: IDCard.DONALD_GENNARO,
+        Location.DENNIS_NEDRY_ID_CARD: IDCard.DENNIS_NEDRY,
+        Location.RAY_ARNOLD_ID_CARD: IDCard.RAY_ARNOLD,
+        Location.ALAN_GRANT_ID_CARD: IDCard.ALAN_GRANT,
+        Location.IAN_MALCOLM_ID_CARD: IDCard.IAN_MALCOLM,
+        Location.ROBERT_MULDOON_ID_CARD: IDCard.ROBERT_MULDOON,
+        Location.HENRY_WU_ID_CARD: IDCard.HENRY_WU,
+        Location.ELLIE_SATLER_ID_CARD: IDCard.ELLIE_SATTLER,
+
+        # Batteries
+        Location.NUBLAR_UTILITY_SHED_BATTERY: Battery.NUBLAR_UTILITY_SHED,
+        Location.BEACH_UTILITY_SHED_BATTERY: Battery.BEACH_UTILITY_SHED,
+        Location.NORTH_UTILIYT_SHED_BATTERY: Battery.NORTH_UTILITY_SHED,
+        Location.VISITOR_CENTER_BATTERY: Battery.VISITOR_CENTER,
+        Location.RAPTOR_PEN_BATTERY: Battery.RAPTOR_PEN,
+        Location.SHIP_BATTERY: Battery.SHIP,
+    }
+    return treasure_map
+
 def _connect_nodes(connectors: Connectors):
     """
     Wire up all of the connectors with their respective nodes
@@ -694,8 +817,7 @@ def _visit_all(map_data: MapData, start_inven: Rewards) -> bool:
     # List of connectors that are reachable but can't currently be traversed
     con_reachable: Connectors = []
 
-    # TODO: Maybe add a visited property to the node itself to avoid
-    #       dealing with these lookups?
+    # Helper function to check if this is a newly visited map node
     def not_seen(node: MapNode) -> bool:
         return (not visited[node]) and (node not in queue)
 
@@ -703,8 +825,8 @@ def _visit_all(map_data: MapData, start_inven: Rewards) -> bool:
         curr = queue.pop()
 
         # Add rewards for the new node
-        if curr.rewards and not visited[curr]:
-            inven.update(curr.rewards)
+        if curr.events and not visited[curr]:
+            inven.update(curr.events)
 
         visited[curr] = True
 
