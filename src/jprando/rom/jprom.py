@@ -1,73 +1,11 @@
 import hashlib
 import io
-from dataclasses import dataclass
 
+from jprando.rom.freespace import FreeSpaceManager
 
-@dataclass
-class FSBlock:
-    """
-    Represents a block of free space in the JP ROM
-    """
-    start: int
-    end: int
-
-class FreeSpaceException(Exception):
-    pass
 
 class JPRomException(Exception):
     pass
-
-class FreeSpaceManager:
-    """
-    Manage free space in the JP ROM.
-    """
-
-    def __init__(self):
-        # NOTE: This list could be replaced with some type of sorted/balanced tree
-        #       to speed up free space operations, but that is probably overkill
-        #       for this project currently.
-        self.free_blocks: list[FSBlock] = []
-
-    def mark_free(self, start: int, end: int):
-        """
-        Mark the specified bytes as free space starting at the given address
-        """
-        # TODO: Check if this is part of an existing block and
-        #       try to combine them (respecting bank boundaries)
-        self.free_blocks.append(FSBlock(start, end))
-
-    def is_free(self, addr: int, size: int) -> bool:
-        """
-        Check if the the requested block is free.
-        """
-        for block in self.free_blocks:
-            if block.start <= addr and addr + size <= block.end:
-                return True
-        return False
-
-    def reserve(self, size: int) -> int:
-        """
-        Reserve the requested number of bytes anywhere in the ROM and
-        return the address.
-        """
-        found_block = None
-        for block in self.free_blocks:
-            if (block.end - block.start) >= size:
-                # Found a free block for this reserve request
-                found_block = block
-                break
-
-        if found_block is None:
-            raise FreeSpaceException(f"No free space blocks available for requested size ({size})")
-
-        addr = found_block.start
-
-        # Reduce the size of the block and remove it if it's used up
-        found_block.start += size
-        if found_block.start == found_block.end:
-            self.free_blocks.remove(found_block)
-
-        return addr
 
 class JPRom:
     """
@@ -123,12 +61,12 @@ class JPRom:
         """
         Set the initial free space for the expanded ROM.
         """
-        # The ROM was expanded from 2MB to 3MB, this leaves 0x20 (32) banks of 32k bytes
+        # The ROM was expanded from 2MB to 3MB, this leave 32 banks of 32k bytes
         # as newly minted free space.
         start = 0x20_0000
         bank_size = 0x8000
         for addr in range(start, self._ROM_SIZE, bank_size):
-            self.free_space_manager.mark_free(addr, addr + bank_size)
+            self.free_space_manager.mark_free(addr, addr + bank_size - 1)
 
     @staticmethod
     def to_cpu_addr(rom_addr: int) -> int:
