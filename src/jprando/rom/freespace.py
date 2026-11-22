@@ -27,20 +27,23 @@ class FreeSpaceException(Exception):
 class FreeSpaceManager:
     """
     Manage free space in the JP ROM.
+
+    Block size is limited to a single 32kb bank.  Bank boundary validation is
+    performed when marking space as free.
     """
 
     # Max block size is equal to a full 32kb bank
     MAX_BLOCK_SIZE = 0x8000
 
     def __init__(self):
-        # NOTE: This list could be replaced with some type of sorted/balanced tree
-        #       to speed up free space operations, but that is probably overkill
-        #       for this project currently.
         self.free_blocks: list[FSBlock] = []
 
     def mark_free(self, start: int, end: int):
         """
         Mark the specified bytes as free space starting at the given address (end inclusive)
+
+        Adjacent blocks are intentionally not combined to prevent allocations from
+        spanning bank boundaries.
         """
         # Make sure the start/end values make sense
         if start < 0 or end < 0:
@@ -53,12 +56,16 @@ class FreeSpaceManager:
         if (end - start + 1) > self.MAX_BLOCK_SIZE:
             raise FreeSpaceException(f"Invalid block size. start={hex(start)}. Max={hex(self.MAX_BLOCK_SIZE)}")
 
+        # Verify that the range does not cross a bank boundary
+        if (start >> 15) != (end >> 15):
+            raise FreeSpaceException("Block cannot cross a bank boundary")
+
         # Ensure this range doesn't overlap any existing block
         for block in self.free_blocks:
-            if block.contains_addr(start) or block.contains_addr(end) or (block.start > start and block.end < end):
+            if start <= block.end and end >= block.start:
                 raise FreeSpaceException(
-                    f"Marked range [{hex(start)}, {hex(end)})"
-                    f" overlaps existing free space at [{hex(block.start)}, {hex(block.end)})")
+                    f"Marked range [{hex(start)}, {hex(end)}]"
+                    f" overlaps existing free space at [{hex(block.start)}, {hex(block.end)}]")
 
         self.free_blocks.append(FSBlock(start, end))
         self.free_blocks.sort()
@@ -98,12 +105,12 @@ class FreeSpaceManager:
                 continue
 
             start = block.start if addr is None else addr
-            if block.get_size() >= size and block.contains(start, start + size - 1):
+            if block.contains(start, start + size - 1):
                 # Found a free block for this reserve request
                 self._resize_block(block, start, size)
                 return start
 
-        # If we got here, no free blocks wre found for this request
+        # If we got here, no free blocks were found for this request
         raise FreeSpaceException(f"No free space blocks available for requested size ({hex(size)})")
 
     def _resize_block(self, block: FSBlock, addr: int, size: int):

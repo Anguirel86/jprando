@@ -3,6 +3,7 @@ from jprando.asm import instructions as inst
 from jprando.rom import memory as mem
 from jprando.rom.jprom import JPRom
 
+am = inst.AddressingMode
 
 def patch_health_regen(rom: JPRom):
     """
@@ -19,7 +20,6 @@ def patch_health_regen(rom: JPRom):
     jump_rom_addr_ow = 0x32D3
     jump_rom_addr_inside = 0x7CCA
 
-    am = inst.AddressingMode
     routine: assemble.ASMList = [
         inst.LDA(mem.DAMAGE_TAKEN_ADDR, am.LNG),
         inst.CMP(0x0000, am.IMM16),
@@ -111,3 +111,46 @@ def patch_gates_open_together(rom: JPRom):
     rom.write(0x132A80, nop3)  # Gate 1 routine
     rom.write(0x132A93, nop3)  # Gate 2 routine
     rom.write(0x132AA6, nop3)  # Gate 3 routine
+
+def patch_start_sel_warp(rom: JPRom):
+    """
+    Patch in a controller handling routine to let the player warp
+    back to the park gates or outside of a building when holding start
+    and pressing select.
+
+    When on the overworld map this will warp the player back to the
+    starting position at the park gates.  When used in a building,
+    this will warp the player outside to the building entrance.
+    """
+    # Check the current raw state of the controller to see if start is pressed
+    # then check the new button mask to see if select is pressed
+    routine: assemble.ASMList = [
+        # Check if start is being pressed
+        inst.LDA(0x7E0AEF, am.LNG),
+        inst.AND(0x1000, am.IMM16),
+        inst.BEQ("done"),
+
+        # Start is being pressed, now check for select
+        inst.LDA(0x7E0AF1, am.LNG),
+        inst.AND(0x2000, am.IMM16),
+        inst.BEQ("done"),
+
+        # start + select are being pressed, warp the player
+        # Load the coordinates for the park gates
+        # x = 0x0805, y = 0925
+        inst.LDA(0x0805, am.IMM16),
+        inst.STA(0x7E0E35, am.LNG),
+        inst.LDA(0x0925, am.IMM16),
+        inst.STA(0x7E0E37, am.LNG),
+
+        # Load the drowning animation. The player will sink into the map
+        # before warping back to the park gates.
+        inst.LDA(0x0286, am.IMM16),
+        inst.STA(0x7E4B9A, am.LNG),
+
+        # TODO: This will cause a player to lose a life
+        # Need to modify that code so it dosn't consume a life to warp.
+
+        "done",
+        inst.RTL(),
+    ]

@@ -1,9 +1,28 @@
+import random
 from dataclasses import dataclass, field
+from enum import Enum, auto
 
 from jprando.jpmap import entrancerando, jpmap
 from jprando.patches import basepatch, qolpatches
 from jprando.rom import jprom
 
+
+class TimMode(Enum):
+    """Controls Tim Murphy's level of unsolicited commentary.
+
+    VANILLA:
+        Tim behaves as originally intended.
+
+    OFF:
+        Tim has been temporarily relieved of his duties.
+
+    UNHINGED:
+        Tim has abandoned reason, restraint, and all concern
+        for the welfare of local Gallimimus populations.
+    """
+    VANILLA = auto()
+    OFF = auto()
+    UNHINGED = auto()
 
 @dataclass
 class QoLFlags:
@@ -64,7 +83,8 @@ def main():
     flags.qol_flags.linked_gates = True
 
     map_data: jpmap.MapData = jpmap.get_default_map()
-    jpmap.shuffle_map(map_data)
+    rng = random.Random()
+    jpmap.shuffle_map(map_data, rng)
     entrancerando.apply_entrance_rando(rom, map_data)
     _apply_qol_patches(flags.qol_flags, rom)
     rom.write_to_file("./jprando/jp-mod.sfc")

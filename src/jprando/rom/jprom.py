@@ -2,6 +2,7 @@ import hashlib
 import io
 
 from jprando.rom.freespace import FreeSpaceManager
+from jprando.rom.symbolregistry import SymbolRegistry
 
 
 class JPRomException(Exception):
@@ -9,7 +10,18 @@ class JPRomException(Exception):
 
 class JPRom:
     """
-    Class to manage the Jurassic Park ROM data.
+    Manage the data for the Jurassic Park ROM image.
+
+    The JPRom class is the primary interface for working with Jurassic Park ROM data.  It
+    is responsible for loading/validating the ROM, handling ROM expansion, and managing
+    free space and resource symbol registration.
+
+    This class will only accept an unheadered vanilla Jurassic Park (USA) ROM, and
+    correctly modifies/updates the SNES cartridge header when writing the modified
+    ROM back to disk.
+
+    Functions are provided to reserve space, write patch data, and ROM-to-CPU
+    address conversion.
     """
 
     JPUSA_MD5_HASH = "bb9c2f667ced16a2e605b385c041c744"
@@ -33,6 +45,7 @@ class JPRom:
             raise JPRomException("Invalid hash. Please use a Jurassic Park USA ROM")
 
         self.free_space_manager = FreeSpaceManager()
+        self.symbols = SymbolRegistry()
         self._expand_rom()
 
     def _expand_rom(self):
@@ -50,7 +63,7 @@ class JPRom:
         self._rom_buf.write(bytes([0x00, 0x00, 0xFF, 0xFF]))
 
         # Expand the ROM to 3MB
-        # Could go to 4MB, but 1MB should be mnore than enough space
+        # Could go to 4MB, but 1MB should be more than enough space
         self._rom_buf.seek(0, io.SEEK_END)
         self._rom_buf.write(bytes([0] * 0x10_0000))
 
@@ -64,7 +77,7 @@ class JPRom:
         # The ROM was expanded from 2MB to 3MB, this leave 32 banks of 32k bytes
         # as newly minted free space.
         start = 0x20_0000
-        bank_size = 0x8000
+        bank_size = self.free_space_manager.MAX_BLOCK_SIZE
         for addr in range(start, self._ROM_SIZE, bank_size):
             self.free_space_manager.mark_free(addr, addr + bank_size - 1)
 
@@ -113,14 +126,24 @@ class JPRom:
         self._rom_buf.seek(addr + len(data))
         self._rom_buf.write(nops)
 
-    def reserve(self, requested_size: int) -> int:
+    def reserve(self, requested_size: int, addr: int | None = None, name: str | None = None) -> int:
         """
         Get the next free address to store data to the ROM.
         This is a ROM (file) address, not a CPU address.
         Requested_size is the size of the requested free space in bytes.
         The requested space will be reserved.
+
+        If a name is provided, the reserved space will be listed in the
+        ROM's symbol registry.
+
+        NOTE: If a specific address is not supplied, the first available
+              block with enough space will be chosen automatically.
         """
-        return self.free_space_manager.reserve(requested_size)
+        reserved_addr = self.free_space_manager.reserve(requested_size, addr)
+        if name != None:
+            self.symbols.register_symbol(name, reserved_addr, requested_size)
+
+        return reserved_addr
 
     def get_buffer(self) -> memoryview:
         """

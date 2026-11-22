@@ -75,19 +75,8 @@ class Connector:
     from_node: MapNode
     to_node: MapNode
     reversible: bool
-    rules: Rules = field(default_factory=list[list[Reward]]|None)
+    rules: Rules = None
     linked_exit: "Connector|None" = None
-
-    def __hash__(self):
-        return hash(f"{self.name}{self.from_node.name}{self.to_node.name}")
-
-    def __eq__(self, other):
-        if not isinstance(other, Connector):
-            return False
-
-        return self.name == other.name and \
-               self.to_node == other.to_node and \
-               self.from_node == other.from_node
 
 @dataclass
 class MapData:
@@ -98,16 +87,6 @@ class MapData:
     nodes: MapNodes
     connectors: Connectors
     treasure_map: TreasureMap
-
-def get_default_map() -> MapData:
-    """
-    Get a default Jurassic Park MapData object.
-    """
-    nodes = _get_default_map_nodes()
-    connectors = _get_default_connectors(nodes)
-    treasure_map = _get_default_treasure_map()
-    _connect_nodes(connectors)
-    return MapData(nodes[JPRegion.OW_SOUTH_REGION], nodes, connectors, treasure_map)
 
 def _get_default_map_nodes() -> MapNodes:
     """
@@ -127,7 +106,7 @@ def _get_default_map_nodes() -> MapNodes:
                 Location.SOUTH_NUBLAR_MOUNTAIN_EGG,
                 Location.HELIPAD_EGG
             ],
-            True),
+            True), # Gate 3
         JPRegion.OW_CENTRAL_REGION: MapNode(
             JPRegion.OW_CENTRAL_REGION,
             None,
@@ -826,7 +805,12 @@ def _visit_all(map_data: MapData, start_inven: Rewards) -> bool:
 
         # Add rewards for the new node
         if curr.events and not visited[curr]:
+            # Add new events
             inven.update(curr.events)
+            # Add newly acquired items
+            if curr.locations:
+                for loc in curr.locations:
+                    inven.update([map_data.treasure_map[loc]])
 
         visited[curr] = True
 
@@ -861,7 +845,7 @@ def _print_map(map_data: MapData):
         for conn in node.exits:
             print(f"  {conn.name} - {conn.from_node.name} -> {conn.to_node.name}")
 
-def _shuffle_map(map_data: MapData):
+def _shuffle_map(map_data: MapData, rng: random.Random):
     """
     Shuffle a map.
 
@@ -893,7 +877,7 @@ def _shuffle_map(map_data: MapData):
 
     # Create and shuffle a list of all endpoints
     endpoints = [x.to_node for x in outdoor_exits]
-    random.shuffle(endpoints)
+    rng.shuffle(endpoints)
 
     # Relink outdoor exits to a new endpoint based on the shuffled index
     for conn, node in zip(outdoor_exits, endpoints, strict=True):
@@ -904,20 +888,46 @@ def _shuffle_map(map_data: MapData):
             conn.linked_exit = rev
             rev.linked_exit = conn
 
-def shuffle_map(map_data: MapData):
+def get_default_map() -> MapData:
+    """
+    Get a default Jurassic Park MapData object.
+    """
+    nodes = _get_default_map_nodes()
+    connectors = _get_default_connectors(nodes)
+    treasure_map = _get_default_treasure_map()
+    _connect_nodes(connectors)
+    return MapData(nodes[JPRegion.OW_SOUTH_REGION], nodes, connectors, treasure_map)
+
+def shuffle_map(map_data: MapData, rng: random.Random, max_attempts: int = 100):
     """
     Shuffle the overworld connectors on the given map.
+
+    NOTE: This function just tests for reachability assuming all inventory
+          items are available. It does not do item placement validation.
     """
     # Assume access to all items for shuffling
     inventory: Rewards = list(Battery)
     inventory.extend(list(IDCard))
     inventory.extend(list(Item))
+
     valid = False
-    while not valid:
-        _shuffle_map(map_data)
+    attempts = 0
+    while not valid and (attempts < max_attempts):
+        _shuffle_map(map_data, rng)
         valid = _visit_all(map_data, inventory)
+        attempts += 1
+
+def validate_map(map_data: MapData) -> bool:
+    """
+    Validate a given map and item placement.
+
+    This routine will walk the map and ensure that all regions are
+    accessible given the map layout and item placement.
+    """
+    return _visit_all(map_data, [])
 
 def main():
+    """For local testing"""
     map_data = get_default_map()
 
     # Assume access to all items for this test
@@ -927,9 +937,10 @@ def main():
 
     valid = False
     count = 0
+    rng = random.Random()
     while not valid:
         count += 1
-        _shuffle_map(map_data)
+        _shuffle_map(map_data, rng)
         valid = _visit_all(map_data, inventory)
 
     print(f"Found valid map in {count} iterations")
