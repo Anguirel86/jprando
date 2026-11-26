@@ -85,7 +85,7 @@ class Location(StrEnum):
     RAY_ARNOLD_ID_CARD = auto()
 
     # North Utility Shed
-    NORTH_UTILIYT_SHED_BATTERY = auto()
+    NORTH_UTILITY_SHED_BATTERY = auto()
     # TOOD: Add nerve gas pickup when implemented
 
     # Visitor Center

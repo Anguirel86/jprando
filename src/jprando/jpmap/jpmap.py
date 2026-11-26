@@ -15,7 +15,7 @@ from jprando.jpmap.entrancetypes import (
     OWEntrance,
 )
 
-Reward: TypeAlias = Event | IDCard | Battery | Item
+Reward: TypeAlias = Event | IDCard | Battery | Item | None
 Events: TypeAlias = list[Event] | None
 Rules: TypeAlias = list[list[Reward]] | None
 Rewards: TypeAlias = list[Reward] | None
@@ -87,6 +87,15 @@ class MapData:
     nodes: MapNodes
     connectors: Connectors
     treasure_map: TreasureMap
+
+@dataclass
+class SweepResults:
+    """
+    Holds results from analyzing the map for completability.
+    """
+    reachable_nodes: list[MapNode]
+    unreachable_nodes: list[MapNode]
+    reachable_locations: list[Location]
 
 def _get_default_map_nodes() -> MapNodes:
     """
@@ -314,7 +323,7 @@ def _get_default_map_nodes() -> MapNodes:
         JPRegion.NORTH_UTILITY_SHED_ENTRY: MapNode(
             JPRegion.NORTH_UTILITY_SHED_ENTRY,
             None,
-            [Location.NORTH_UTILIYT_SHED_BATTERY],
+            [Location.NORTH_UTILITY_SHED_BATTERY],
             False,
             MapId.NORTH_UTILITY_SHED_ENTRY_LEVEL),
         JPRegion.NORTH_UTILITY_SHED_B1: MapNode(JPRegion.NORTH_UTILITY_SHED_B1, None, None),
@@ -742,7 +751,7 @@ def _get_default_treasure_map() -> TreasureMap:
         # Batteries
         Location.NUBLAR_UTILITY_SHED_BATTERY: Battery.NUBLAR_UTILITY_SHED,
         Location.BEACH_UTILITY_SHED_BATTERY: Battery.BEACH_UTILITY_SHED,
-        Location.NORTH_UTILIYT_SHED_BATTERY: Battery.NORTH_UTILITY_SHED,
+        Location.NORTH_UTILITY_SHED_BATTERY: Battery.NORTH_UTILITY_SHED,
         Location.VISITOR_CENTER_BATTERY: Battery.VISITOR_CENTER,
         Location.RAPTOR_PEN_BATTERY: Battery.RAPTOR_PEN,
         Location.SHIP_BATTERY: Battery.SHIP,
@@ -786,13 +795,13 @@ def _can_access(rules: Rules, inventory: Counter) -> bool:
     # None of the access rules passed
     return False
 
-def _visit_all(map_data: MapData, start_inven: Rewards) -> bool:
+def sweep_map(map_data: MapData, start_inven: Rewards) -> SweepResults:
     """
-    Visit the entire map to ensure all nodes are reachable in the current configuration.
+    Sweep the given map to determine which nodes are reachable.
     """
     visited = dict.fromkeys(map_data.nodes.values(), False)
     queue = [map_data.start]
-    inven = Counter(start_inven)
+    inven = Counter(start_inven or [])
     # List of connectors that are reachable but can't currently be traversed
     con_reachable: Connectors = []
 
@@ -804,13 +813,15 @@ def _visit_all(map_data: MapData, start_inven: Rewards) -> bool:
         curr = queue.pop()
 
         # Add rewards for the new node
-        if curr.events and not visited[curr]:
+        if not visited[curr]:
             # Add new events
-            inven.update(curr.events)
+            if curr.events:
+                inven.update(curr.events)
+
             # Add newly acquired items
             if curr.locations:
-                for loc in curr.locations:
-                    inven.update([map_data.treasure_map[loc]])
+                rewards = [map_data.treasure_map[x] for x in curr.locations if map_data.treasure_map[x] is not None]
+                inven.update(rewards)
 
         visited[curr] = True
 
@@ -827,14 +838,17 @@ def _visit_all(map_data: MapData, start_inven: Rewards) -> bool:
                 else:
                     con_reachable.append(entrance)
 
-    # Verify that all nodes are reachable
-    all_reachable = True
-    for seen in visited.values():
-        if not seen:
-            all_reachable = False
-            break
+    # Determine which nodes are reachable
+    reachable = [x for x in visited if visited[x]]
+    unreachable = [x for x in visited if not visited[x]]
+    locations = []
+    for node in reachable:
+        if node.locations is not None:
+            locations.extend(node.locations)
 
-    return all_reachable
+    sweep_results = SweepResults(reachable, unreachable, locations)
+
+    return sweep_results
 
 def _print_map(map_data: MapData):
     """
@@ -898,7 +912,7 @@ def get_default_map() -> MapData:
     _connect_nodes(connectors)
     return MapData(nodes[JPRegion.OW_SOUTH_REGION], nodes, connectors, treasure_map)
 
-def shuffle_map(map_data: MapData, rng: random.Random, max_attempts: int = 100):
+def shuffle_map(map_data: MapData, rng: random.Random, max_attempts: int = 100) -> bool:
     """
     Shuffle the overworld connectors on the given map.
 
@@ -914,8 +928,10 @@ def shuffle_map(map_data: MapData, rng: random.Random, max_attempts: int = 100):
     attempts = 0
     while not valid and (attempts < max_attempts):
         _shuffle_map(map_data, rng)
-        valid = _visit_all(map_data, inventory)
+        valid = len(sweep_map(map_data, inventory).unreachable_nodes) == 0
         attempts += 1
+
+    return valid
 
 def validate_map(map_data: MapData) -> bool:
     """
@@ -924,7 +940,7 @@ def validate_map(map_data: MapData) -> bool:
     This routine will walk the map and ensure that all regions are
     accessible given the map layout and item placement.
     """
-    return _visit_all(map_data, [])
+    return len(sweep_map(map_data, []).unreachable_nodes) == 0
 
 def main():
     """For local testing"""
@@ -941,7 +957,7 @@ def main():
     while not valid:
         count += 1
         _shuffle_map(map_data, rng)
-        valid = _visit_all(map_data, inventory)
+        valid = len(sweep_map(map_data, inventory).unreachable_nodes) == 0
 
     print(f"Found valid map in {count} iterations")
     _print_map(map_data)

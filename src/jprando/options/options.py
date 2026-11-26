@@ -3,7 +3,8 @@ from enum import Enum, auto
 
 
 class TimMode(Enum):
-    """Controls Tim Murphy's level of unsolicited commentary.
+    """
+    Controls Tim Murphy's level of unsolicited commentary.
 
     VANILLA:
         Tim behaves as originally intended.

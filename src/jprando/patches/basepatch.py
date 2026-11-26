@@ -31,6 +31,7 @@ def _patch_ap_item_handling(rom: JPRom):
         inst.BNE("end"),
         # Deal 0x50 damage (same as in-game shock traps)
         inst.LDA(mem.DAMAGE_TAKEN_ADDR, am.LNG),
+        inst.CLC(),
         inst.ADC(0x50, am.IMM16),
         inst.STA(mem.DAMAGE_TAKEN_ADDR, am.LNG),
         # Set the forced animation pointer to the electrocution animation start value
